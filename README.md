@@ -1,6 +1,6 @@
 # Smart Ticket System - Monolithic Architecture
 
-A comprehensive ticket management system with AI-powered categorization using GPT4Free. This system automatically categorizes support tickets into appropriate departments without requiring API keys.
+A comprehensive ticket management system with AI-powered categorization using Anthropic's Claude API. This system automatically categorizes support tickets into appropriate departments using advanced AI.
 
 ## Table of Contents
 
@@ -15,14 +15,15 @@ A comprehensive ticket management system with AI-powered categorization using GP
 
 ## Features
 
-- **Automated Ticket Categorization**: Uses AI to categorize tickets into departments
+- **Automated Ticket Categorization**: Uses Claude AI to categorize tickets into departments
 - **Multiple Departments**: IT Support, HR, Facilities, Finance, and General
 - **Status Tracking**: Track tickets through pending, in_progress, and resolved states
 - **Department Dashboards**: View and manage tickets by department
 - **Confidence Scoring**: AI provides confidence scores for categorizations
 - **Fallback Mechanism**: Keyword-based categorization when AI is unavailable
 - **RESTful API**: Complete REST API for all operations
-- **No API Keys Required**: Uses g4f (GPT4Free) library
+- **Official Claude API**: Uses Anthropic's official Claude 3.5 Haiku model (fast and cost-effective)
+- **Auto-Initialization**: Database automatically initializes on first run
 
 ## Architecture
 
@@ -129,7 +130,7 @@ SmartTicketSystem-Monolith/
 - Transaction handling
 
 **ai_categorization.py**: AI categorization engine:
-- g4f integration
+- Official Anthropic Claude API integration
 - Prompt engineering
 - Response parsing
 - Fallback categorization
@@ -139,14 +140,119 @@ SmartTicketSystem-Monolith/
 - Routing validation
 - Statistics gathering
 
+## Prerequisites
+
+### Claude API Key
+
+This application requires a Claude API key from Anthropic.
+
+1. **Get your API key**:
+   - Visit [https://console.anthropic.com/](https://console.anthropic.com/)
+   - Sign up or log in to your account
+   - Navigate to API Keys section
+   - Create a new API key
+
+2. **Set up your environment**:
+
+   **Option A: Using .env file (Recommended)**
+   ```bash
+   # Copy the example file
+   cp .env.example .env
+
+   # Edit .env and add your API key
+   # CLAUDE_API_KEY=your_actual_api_key_here
+   ```
+
+   **Option B: Using environment variable**
+
+   On Windows:
+   ```bash
+   set CLAUDE_API_KEY=your_actual_api_key_here
+   ```
+
+   On Mac/Linux:
+   ```bash
+   export CLAUDE_API_KEY=your_actual_api_key_here
+   ```
+
+   **Option C: Using Docker**
+   ```bash
+   # Create .env file with your API key
+   echo "CLAUDE_API_KEY=your_actual_api_key_here" > .env
+
+   # Docker Compose will automatically load it
+   ```
+
+**Important**: Never commit your `.env` file or API key to version control!
+
 ## Installation
 
-### Prerequisites
+You can run the application either directly with Python or using Docker containers.
+
+### Option 1: Docker (Recommended)
+
+Docker provides an isolated, consistent environment and is the easiest way to get started.
+
+#### Prerequisites
+
+- Docker (20.10 or higher)
+- Docker Compose (1.29 or higher)
+
+#### Setup Steps
+
+1. **Clone or download the project**
+
+2. **Build and run with Docker Compose**
+
+```bash
+docker-compose up -d
+```
+
+This will:
+- Build the Docker image
+- Initialize the database automatically
+- Start the application in the background
+- Make it available on `http://localhost:5000`
+
+3. **Check the logs** (optional)
+
+```bash
+docker-compose logs -f
+```
+
+4. **Stop the application**
+
+```bash
+docker-compose down
+```
+
+#### Alternative: Using Docker directly
+
+```bash
+# Build the image
+docker build -t smart-ticket-system .
+
+# Run the container
+docker run -d -p 5000:5000 --name ticket-system smart-ticket-system
+
+# View logs
+docker logs -f ticket-system
+
+# Stop the container
+docker stop ticket-system
+
+# Remove the container
+docker rm ticket-system
+```
+
+### Option 2: Direct Python Installation
+
+#### Prerequisites
 
 - Python 3.8 or higher
 - pip (Python package manager)
 
-### Setup Steps
+#### Setup Steps
 
 1. **Clone or download the project**
 
@@ -180,6 +286,24 @@ The server will start on `http://localhost:5000`
 ## Usage
 
 ### Starting the Server
+
+#### With Docker
+
+```bash
+docker-compose up -d
+```
+
+Check if it's running:
+```bash
+docker-compose ps
+```
+
+View logs:
+```bash
+docker-compose logs -f ticket-system
+```
+
+#### With Python
 
 ```bash
 python app.py
@@ -229,7 +353,19 @@ Response:
 
 ### Running the Test Suite
 
-The test script creates 20 sample tickets covering all departments:
+The test script creates 20 sample tickets covering all departments.
+
+#### With Docker
+
+```bash
+# Run tests from your host machine (server must be running)
+python test_tickets.py
+
+# OR run tests inside the container
+docker-compose exec ticket-system python test_tickets.py
+```
+
+#### With Python
 
 ```bash
 python test_tickets.py
@@ -554,9 +690,22 @@ python init_db.py
 
 **Problem**: All tickets categorized as "General" with low confidence
 **Solution**:
-- Check internet connection (g4f needs internet)
+- Check if CLAUDE_API_KEY is set correctly
+- Verify your API key is valid at https://console.anthropic.com/
+- Check if you have API credits/quota available
+- Check internet connection
 - The fallback system is working (using keywords)
-- AI services may be temporarily unavailable
+
+**Problem**: `ValueError: CLAUDE_API_KEY environment variable is not set`
+**Solution**: Set your Claude API key
+```bash
+# Create .env file
+echo "CLAUDE_API_KEY=your_actual_api_key_here" > .env
+
+# Or set environment variable
+export CLAUDE_API_KEY=your_actual_api_key_here  # Mac/Linux
+set CLAUDE_API_KEY=your_actual_api_key_here     # Windows
+```
 
 ### Import errors
 
@@ -566,6 +715,40 @@ python init_db.py
 pip install -r requirements.txt
 ```
 
+### Docker Issues
+
+**Problem**: `Cannot connect to the Docker daemon`
+**Solution**: Make sure Docker is running
+```bash
+# Check Docker status
+docker --version
+docker info
+```
+
+**Problem**: Port 5000 already in use with Docker
+**Solution**: Change the port mapping in docker-compose.yml
+```yaml
+ports:
+  - "5001:5000"  # Use port 5001 instead
+```
+
+**Problem**: Container keeps restarting
+**Solution**: Check the logs
+```bash
+docker-compose logs ticket-system
+```
+
+**Problem**: Database not persisting after container restart
+**Solution**: Make sure the volume is properly configured in docker-compose.yml
+
+**Problem**: Changes to code not reflected in container
+**Solution**: Rebuild the image
+```bash
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
+```
+
 ---
 
-**Note**: This system uses g4f (GPT4Free) which accesses AI models through various providers. Service availability may vary. The fallback keyword-based categorization ensures the system continues working even when AI services are unavailable.
+**Note**: This system uses Anthropic's official Claude API for AI-powered ticket categorization. You need a valid API key to use the AI features. The fallback keyword-based categorization ensures the system continues working even when AI services are unavailable or API key is not configured.

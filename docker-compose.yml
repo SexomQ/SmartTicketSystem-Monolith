@@ -1,0 +1,37 @@
+
+services:
+  ticket-system:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smart-ticket-system
+    ports:
+      - "5000:5000"
+    volumes:
+      # Persist database outside container
+      - ./data:/app/data
+      # Mount the database file location
+      - ticket-db:/app
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - ticket-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  ticket-db:
+    driver: local
+
+networks:
+  ticket-network:
+    driver: bridge

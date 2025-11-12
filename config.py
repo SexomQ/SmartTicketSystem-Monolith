@@ -6,8 +6,19 @@ This centralized configuration makes it easy to modify settings
 without searching through the entire codebase.
 """
 
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 # Database Configuration
 DATABASE_NAME = 'tickets.db'
+
+# Claude API Configuration
+CLAUDE_API_KEY = os.environ.get('CLAUDE_API_KEY', '')
+CLAUDE_MODEL = 'claude-3-5-haiku-20250929'  # Claude 3.5 Haiku model (faster and more cost-effective)
+CLAUDE_MAX_TOKENS = 300  # Max tokens for categorization response
 
 # Department Configuration
 DEPARTMENTS = [

@@ -7,6 +7,7 @@ Run this once before starting the application.
 
 import sqlite3
 from datetime import datetime
+from config import DATABASE_NAME
 
 def init_database():
     """
@@ -15,7 +16,7 @@ def init_database():
     This function creates the database structure for the monolithic
     ticket management system.
     """
-    conn = sqlite3.connect('tickets.db')
+    conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
 
     # Create tickets table
@@ -51,7 +52,7 @@ def init_database():
 
     print("✓ Database initialized successfully!")
     print("✓ Created 'tickets' table with proper indexes")
-    print("✓ Database file: tickets.db")
+    print(f"✓ Database file: {DATABASE_NAME}")
 
 if __name__ == '__main__':
     init_database()

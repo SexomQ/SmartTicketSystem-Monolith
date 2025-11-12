@@ -196,10 +196,11 @@ def get_ticket_statistics():
         cursor.execute('SELECT COUNT(*) as count FROM tickets')
         total_tickets = cursor.fetchone()['count']
 
-        # By department
+        # By department (exclude NULL departments)
         cursor.execute('''
             SELECT department, COUNT(*) as count
             FROM tickets
+            WHERE department IS NOT NULL
             GROUP BY department
         ''')
         by_department = {row['department']: row['count'] for row in cursor.fetchall()}
@@ -212,8 +213,8 @@ def get_ticket_statistics():
         ''')
         by_status = {row['status']: row['count'] for row in cursor.fetchall()}
 
-        # Average confidence score
-        cursor.execute('SELECT AVG(confidence_score) as avg_confidence FROM tickets')
+        # Average confidence score (exclude NULL values)
+        cursor.execute('SELECT AVG(confidence_score) as avg_confidence FROM tickets WHERE confidence_score IS NOT NULL')
         avg_confidence = cursor.fetchone()['avg_confidence'] or 0
 
         return {

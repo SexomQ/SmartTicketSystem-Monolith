@@ -36,6 +36,8 @@ File Structure:
 
 from flask import Flask, request, jsonify
 import logging
+import os
+import sqlite3
 
 # Import our modules
 from config import (
@@ -44,7 +46,8 @@ from config import (
     FLASK_HOST,
     FLASK_PORT,
     FLASK_DEBUG,
-    LOG_LEVEL
+    LOG_LEVEL,
+    DATABASE_NAME
 )
 from database import (
     create_ticket,
@@ -57,6 +60,7 @@ from database import (
 )
 from ai_categorization import categorize_ticket
 from routing import route_ticket_to_department, get_routing_statistics
+from init_db import init_database
 
 # Configure logging
 logging.basicConfig(
@@ -68,6 +72,54 @@ logger = logging.getLogger(__name__)
 # Initialize Flask application
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
+
+
+# ============================================================================
+# DATABASE AUTO-INITIALIZATION
+# ============================================================================
+
+def ensure_database_initialized():
+    """
+    Check if the database has been initialized and initialize it if needed.
+
+    This function checks if:
+    1. The database file exists
+    2. The required 'tickets' table exists
+
+    If either check fails, it automatically initializes the database.
+    """
+    db_needs_init = False
+
+    # Check if database file exists
+    if not os.path.exists(DATABASE_NAME):
+        logger.info(f"Database file '{DATABASE_NAME}' not found. Initializing database...")
+        db_needs_init = True
+    else:
+        # Check if tickets table exists
+        try:
+            conn = sqlite3.connect(DATABASE_NAME)
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tickets'")
+            if cursor.fetchone() is None:
+                logger.info("Database exists but 'tickets' table not found. Initializing database...")
+                db_needs_init = True
+            conn.close()
+        except Exception as e:
+            logger.warning(f"Error checking database: {e}. Initializing database...")
+            db_needs_init = True
+
+    # Initialize database if needed
+    if db_needs_init:
+        try:
+            init_database()
+            logger.info("✓ Database initialized successfully!")
+        except Exception as e:
+            logger.error(f"Failed to initialize database: {e}")
+            raise
+
+
+# Ensure database is initialized on startup
+ensure_database_initialized()
 
 
 # ============================================================================
@@ -525,9 +577,7 @@ if __name__ == '__main__':
     logger.info(f"Available Departments: {', '.join(DEPARTMENTS)}")
     logger.info(f"Ticket Statuses: {', '.join(TICKET_STATUSES)}")
     logger.info("")
-    logger.info("IMPORTANT: Run 'python init_db.py' first if you haven't")
-    logger.info("           initialized the database yet.")
-    logger.info("")
+    logger.info("Database: Auto-initialization enabled")
     logger.info(f"Starting server on {FLASK_HOST}:{FLASK_PORT}")
     logger.info("=" * 60)
 

@@ -1,9 +1,9 @@
 """
 AI Categorization Module for Smart Ticket System
 
-Uses g4f (GPT4Free) library to categorize tickets into departments
-without requiring API keys. This module handles:
-- AI model interaction
+Uses Anthropic's Claude API to categorize tickets into departments.
+This module handles:
+- AI model interaction via official Anthropic SDK
 - Response parsing
 - Retry logic for robustness
 - Fallback strategies when AI is unavailable
@@ -14,13 +14,16 @@ even if the AI service is unavailable.
 
 import logging
 import time
-from g4f.client import Client
+from anthropic import Anthropic, APIError, APIConnectionError, RateLimitError
 from config import (
     DEPARTMENTS,
     AI_MAX_RETRIES,
     AI_RETRY_DELAY,
     AI_DEFAULT_CONFIDENCE,
-    AI_FALLBACK_CONFIDENCE
+    AI_FALLBACK_CONFIDENCE,
+    CLAUDE_API_KEY,
+    CLAUDE_MODEL,
+    CLAUDE_MAX_TOKENS
 )
 
 logger = logging.getLogger(__name__)
@@ -108,7 +111,7 @@ Rules:
 
 def _call_ai_service(prompt):
     """
-    Make a call to the g4f AI service.
+    Make a call to the Claude API using the official Anthropic SDK.
 
     Args:
         prompt: The prompt to send to the AI
@@ -119,17 +122,43 @@ def _call_ai_service(prompt):
     Raises:
         Exception: If the AI service call fails
     """
-    client = Client()
+    if not CLAUDE_API_KEY:
+        raise ValueError("CLAUDE_API_KEY environment variable is not set")
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-    )
+    try:
+        # Create Anthropic client with explicit configuration
+        # Note: Some versions don't support proxies parameter, so we just use api_key
+        client = Anthropic(
+            api_key=CLAUDE_API_KEY,
+            timeout=30.0  # 30 second timeout for API calls
+        )
 
-    response_text = response.choices[0].message.content.strip()
-    logger.info(f"AI Response: {response_text}")
+        response = client.messages.create(
+            model=CLAUDE_MODEL,
+            max_tokens=CLAUDE_MAX_TOKENS,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
 
-    return response_text
+        response_text = response.content[0].text.strip()
+        logger.info(f"AI Response: {response_text}")
+
+        return response_text
+
+    except RateLimitError as e:
+        logger.error(f"Rate limit exceeded: {e}")
+        raise
+    except APIConnectionError as e:
+        logger.error(f"API connection error: {e}")
+        raise
+    except APIError as e:
+        logger.error(f"API error: {e}")
+        raise
+    except TypeError as e:
+        # Handle initialization errors (like proxy parameter issues)
+        logger.error(f"Client initialization error: {e}")
+        raise
 
 
 def _parse_ai_response(response_text):
